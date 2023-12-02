@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34309.116
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sonos-autoPause-alpha", "Sonos-autoPause-alpha.csproj", "{971B590A-7B00-4382-9C17-69B9F4B88A96}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{971B590A-7B00-4382-9C17-69B9F4B88A96}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{971B590A-7B00-4382-9C17-69B9F4B88A96}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{971B590A-7B00-4382-9C17-69B9F4B88A96}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{971B590A-7B00-4382-9C17-69B9F4B88A96}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1C35E6C2-2D99-4522-A90E-B85CD5465265}
+	EndGlobalSection
+EndGlobal
