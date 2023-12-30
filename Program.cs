@@ -1,77 +1,115 @@
 ﻿using ByteDev.Sonos;
-using ByteDev.Sonos.Device;
-using ByteDev.Sonos.Models;
-using Sonos_autoPause_alpha;
 using System.Net;
 
-public class Program
+namespace Sonos_autoPause_alpha
 {
-    public static async Task Main(string[] args)
+    public class Program
     {
-        bool ProvideForFocusSession;
-        List<string> SonosesIPs = new List<string>();
-
-        if (args.Count() == 0)
+        public static void Main(string[] args)
         {
-            ProvideForFocusSession = true;
-            SonosesIPs.Add("169.254.212.11");
+            bool ProvideForFocusSession;
+            List<string> SonosesIPs = [];
 
-        }
-        else
-        {
-            if (!Boolean.TryParse(args[0], out ProvideForFocusSession))
+            if (args.Length == 0)
             {
-                Console.WriteLine("Wrong arg. of provideing for focus session.");
                 ProvideForFocusSession = true;
+                StopDelayTime = 750;
+                PlayDelayTime = 3000;
+                SonosesIPs.Add("169.254.212.11");
+
             }
-
-            for (int i = 1; i!= args.Length; ++i)
+            else
             {
-                if (IPAddress.TryParse(args[i], out _))
-                    SonosesIPs.Add(args[i]);
-                else
-                    Console.WriteLine("Wrong arg. of sonos ip - arg no " + i);
-            }
-        }
-
-        SonosController controller = new SonosControllerFactory().Create("169.254.212.11");
-
-        ConnectedSonosControllers = new List<SonosController>();
-        PausedHereSonosControllers = new List<SonosController>();
-
-        ConnectedSonosControllers.Add(controller);
-
-        SystemMediaObserver systemMediaObserver = new(true);
-        systemMediaObserver.fadeMusicOut += PlayPauseControllers;
-
-        Console.WriteLine("Programm is running, press any key to quit..");
-        Console.ReadKey(true);
-    }
-
-    static List<SonosController> ConnectedSonosControllers = new List<SonosController>();
-    static List<SonosController> PausedHereSonosControllers = new List<SonosController>();
-
-    private static void PlayPauseControllers(bool PauseNow)
-    {
-        if (PauseNow)
-        {
-            PausedHereSonosControllers = new List<SonosController>();
-            foreach (SonosController controller in ConnectedSonosControllers)
-            {
-                if (controller.GetIsPlayingAsync().Result)
+                if (!bool.TryParse(args[0], out ProvideForFocusSession))
                 {
-                    controller.PauseAsync();
-                    PausedHereSonosControllers.Add(controller);
+                    Console.WriteLine("Wrong arg. of provideing for focus session.");
+                    ProvideForFocusSession = true;
+                }
+
+                if (!int.TryParse(args[1], out StopDelayTime))
+                {
+                    Console.WriteLine("Wrong arg. of delay stop.");
+                    StopDelayTime = 750;
+                }
+
+                if (!int.TryParse(args[2], out StopDelayTime))
+                {
+                    Console.WriteLine("Wrong arg. of delay play.");
+                    PlayDelayTime = 3000;
+                }
+
+                for (int i = 3; i != args.Length; ++i)
+                {
+                    if (IPAddress.TryParse(args[i], out _))
+                        SonosesIPs.Add(args[i]);
+                    else
+                        Console.WriteLine("Wrong arg. of sonos ip - arg no " + i);
                 }
             }
-        }
-        else
-        {
-            foreach (SonosController controller in PausedHereSonosControllers)
+
+            List<SonosController> ConnectedSonosControllersTemp = [];
+            PausedHereSonosControllers = [];
+            SonosControllerFactory sonosControllerFactory = new();
+
+            foreach (string IPaddr in SonosesIPs)
             {
-                controller.PlayAsync();
+                ConnectedSonosControllersTemp.Add(sonosControllerFactory.Create(IPaddr));
             }
-            PausedHereSonosControllers = new List<SonosController>();
+
+            ConnectedSonosControllers = ConnectedSonosControllersTemp;
+
+            SystemMediaObserver.FadeMusicOut += PlayPauseControllers;
+            SystemMediaObserver systemMediaObserver = new(false, StopDelayTime, PlayDelayTime);
+
+            Console.WriteLine("Programm is running, press any key to quit..");
+            Console.ReadKey(true);
+        }
+
+        static IReadOnlyList<SonosController> ConnectedSonosControllers = [];
+        static List<SonosController> PausedHereSonosControllers = [];
+        static int PlayDelayTime;
+        static int StopDelayTime;
+
+        private static void PlayPauseControllers(bool PauseNow)
+        {
+            if (PauseNow)
+            {
+                if (PausedHereSonosControllers.Count != 0)
+                    return;
+
+                foreach (SonosController controller in ConnectedSonosControllers)
+                {
+                    try
+                    {
+                        if (controller.GetIsPlayingAsync().Result)
+                        {
+                            controller.PauseAsync();
+                            PausedHereSonosControllers.Add(controller);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Some problem in time of controler starting " + e.ToString());
+                    }
+                }
+
+            }
+            else
+            {
+                foreach (SonosController controller in PausedHereSonosControllers)
+                {
+                    try
+                    {
+                        controller.PlayAsync();
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Some problem in time of controler stoppting " + e.ToString());
+                    }
+                }
+
+                PausedHereSonosControllers = [];
+            }
         }
     }
 }
