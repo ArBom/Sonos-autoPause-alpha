@@ -1,13 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Windows.Media;
-using Windows.Media.Control;
-using Windows.Media.Playback;
+﻿using Windows.Media.Control;
 using Windows.UI.Shell;
-//using static Sonos_autoPause_alpha.SystemMediaObserver;
 
 namespace Sonos_autoPause_alpha
 {
