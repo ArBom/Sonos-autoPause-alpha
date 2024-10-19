@@ -13,8 +13,8 @@ namespace Sonos_autoPause_alpha
 
         public struct PausedSonosControler
         {
-            public SonosController sonosController;
-            public SonosVolume? previousVolume;
+            public readonly SonosController sonosController;
+            public readonly SonosVolume? previousVolume;
 
             public PausedSonosControler(SonosController sonosController, SonosVolume? previousVolume = null)
             {
@@ -29,6 +29,9 @@ namespace Sonos_autoPause_alpha
         static int PlayDelayTime;
         static int StopDelayTime;
 
+        static CancellationTokenSource StopMakeMuted;
+        static List<Task> MuteInRunTasks;
+
         public static void Main(string[] args)
         {
             bool ProvideForFocusSession;
@@ -37,14 +40,15 @@ namespace Sonos_autoPause_alpha
             List<SonosController> ConnectedSonosControllersTemp = [];
             PausedHereSonosControllers = [];
             SonosControllerFactory sonosControllerFactory = new();
+            StopMakeMuted = default;
 
             #region args
             if (args.Length == 0)
             {
-                NoWindow = false;
+                NoWindow = true;
                 ProvideForFocusSession = true;
                 MuteInsteadStop = true;
-                StopDelayTime = 750;
+                StopDelayTime = 400;
                 PlayDelayTime = 500;
                 SonosesIPs.Add("192.168.0.100");
 
@@ -72,7 +76,7 @@ namespace Sonos_autoPause_alpha
                 if (!int.TryParse(args[3], out StopDelayTime))
                 {
                     Console.WriteLine("Wrong arg. of delay stop.");
-                    StopDelayTime = 400;
+                    StopDelayTime = 150;
                 }
 
                 if (StopDelayTime < 0)
@@ -117,8 +121,33 @@ namespace Sonos_autoPause_alpha
             Console.ReadKey(true);
         }
 
+        private static void MakeSoftPause(PausedSonosControler controler, CancellationToken cancellationToken)
+        {
+            int diff = 1;
+            int ActControlVolume = controler.sonosController.GetVolumeAsync().Result.Value;
+            SonosVolume NextControlerVolume = new SonosVolume();
+
+            while (!cancellationToken.IsCancellationRequested && ActControlVolume != SonosVolume.MinVolume) 
+            {
+                if (ActControlVolume - diff < SonosVolume.MinVolume)
+                    ActControlVolume = SonosVolume.MinVolume;
+                else
+                    ActControlVolume = ActControlVolume - diff;
+
+                NextControlerVolume = new(ActControlVolume);
+                Task t = controler.sonosController.SetVolumeAsync(NextControlerVolume);
+                Task.WaitAny(t);
+                diff++;
+
+                Thread.Sleep(95);
+            }
+        }
+
         private static void PauseControllers()
         {
+            StopMakeMuted = new CancellationTokenSource();
+            MuteInRunTasks = new List<Task>();
+
             foreach (SonosController controller in ConnectedSonosControllers)
             {
                 try
@@ -126,17 +155,24 @@ namespace Sonos_autoPause_alpha
                     if (controller.GetIsPlayingAsync().Result == false)
                         continue;
 
+                    SonosVolume controlleVolume = controller.GetVolumeAsync().Result;
+
                     if (MuteInsteadStop)
-                    {
-                        SonosVolume controlleVolume = controller.GetVolumeAsync().Result;
+                    {                       
                         PausedSonosControler pausedSonosControler = new PausedSonosControler(controller, controlleVolume);
-                        controller.SetVolumeAsync(new SonosVolume(0));
+                        Task t = new Task(() => { MakeSoftPause(pausedSonosControler, StopMakeMuted.Token); });
+                        t.Start();
+                        MuteInRunTasks.Add(t);
                         PausedHereSonosControllers.Add(pausedSonosControler);
                     }
                     else
                     {
-                        PausedSonosControler pausedSonosControler = new PausedSonosControler(controller, null);
-                        controller.PauseAsync();
+                        PausedSonosControler pausedSonosControler = new PausedSonosControler(controller, controlleVolume);
+                        Task t = new Task(delegate { MakeSoftPause(pausedSonosControler, StopMakeMuted.Token); });
+                        t.Start();
+                            t.ContinueWith(delegate { controller.PauseAsync(); }, StopMakeMuted.Token).
+                            ContinueWith(delegate { controller.SetVolumeAsync(controlleVolume); }, StopMakeMuted.Token);
+                        MuteInRunTasks.Add(t);
                         PausedHereSonosControllers.Add(pausedSonosControler);
                     }
                 }
@@ -151,13 +187,16 @@ namespace Sonos_autoPause_alpha
 
         private static void PlayControllers()
         {
+            StopMakeMuted.Cancel();
+            Task.WaitAll(MuteInRunTasks.ToArray());
+
             foreach (PausedSonosControler pausedSonosControler in PausedHereSonosControllers)
             {
                 try
                 {
-                    if (MuteInsteadStop)
-                        pausedSonosControler.sonosController.SetVolumeAsync(pausedSonosControler.previousVolume);
-                    else
+                    pausedSonosControler.sonosController.SetVolumeAsync(pausedSonosControler.previousVolume);
+
+                    if (!MuteInsteadStop)
                         pausedSonosControler.sonosController.PlayAsync();
                 }
                 catch (Exception e)
