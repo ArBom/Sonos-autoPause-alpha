@@ -9,7 +9,7 @@ PM> NuGet\Install-Package ByteDev.Sonos
 ```
 Best way to use it is (in my opinion) is make shortcut to autorun folder, and add params of programm working like at attached pic below.
 
-![shortcut win](https://onedrive.live.com/embed?resid=5B6E90429D9C8454%21345994&authkey=%21AEuoA0YHXlFZXbw&width=442&height=543)
+![shortcut win](https://github.com/user-attachments/assets/9ee166c6-e635-4997-b0f2-72aa9a53325b)
 
 The selected text at "Element docelowy"/"Target" represent params send to app as string[] args
 ```cs
